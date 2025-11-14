@@ -678,145 +678,327 @@ function getDownloadedImages() {
 }
 
 $downloadedImages = getDownloadedImages();
+
+// Calculate statistics
+$totalImages = count($downloadedImages);
+$totalSize = 0;
+foreach ($downloadedImages as $image) {
+    $totalSize += $image['size'];
+}
+$totalSizeGB = round($totalSize / 1024 / 1024 / 1024, 2);
+$avgSizeMB = $totalImages > 0 ? round($totalSize / $totalImages / 1024 / 1024, 2) : 0;
 ?>
 <!DOCTYPE html>
 <html lang="de">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Docker Image Downloader für Synology</title>
+    <title>Docker Image Downloader - Dashboard</title>
     <link rel="stylesheet" href="assets/style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <h1>
-                <span class="docker-icon">🐳</span>
-                Docker Image Downloader
-            </h1>
-            <p class="subtitle">Mit Multi-Architektur-Unterstützung für Synology NAS</p>
-            <div class="header-actions">
-                <a href="?showlog" target="_blank" class="btn btn-secondary">📋 Log anzeigen</a>
+    <div class="layout-wrapper">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-brand">
+                <span class="sidebar-brand-icon">🐳</span>
+                <span class="sidebar-brand-text">Docker Downloader</span>
             </div>
-        </div>
 
-        <!-- Progress Bar -->
-        <div id="progress-container" class="progress-container">
-            <div class="progress-header">
-                <div>
-                    <span class="progress-title">Download Fortschritt</span>
-                    <span id="progress-stage" class="progress-stage init">Vorbereitung</span>
-                </div>
-                <span id="progress-percentage" class="progress-percentage">0%</span>
-            </div>
-            <div class="progress-bar-wrapper">
-                <div id="progress-bar" class="progress-bar progress-bar-animated" style="width: 0%"></div>
-            </div>
-            <div id="progress-message" class="progress-message">Warte auf Download...</div>
-        </div>
+            <nav class="sidebar-menu">
+                <div class="menu-title">Hauptmenü</div>
+                <a href="index.php" class="menu-item active">
+                    <svg class="menu-item-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
+                    </svg>
+                    <span>Dashboard</span>
+                </a>
+                <a href="#download-section" class="menu-item" onclick="document.getElementById('download-section').scrollIntoView({behavior: 'smooth'}); return false;">
+                    <svg class="menu-item-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                    </svg>
+                    <span>Download</span>
+                </a>
+                <a href="#images-section" class="menu-item" onclick="document.getElementById('images-section').scrollIntoView({behavior: 'smooth'}); return false;">
+                    <svg class="menu-item-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4"></path>
+                    </svg>
+                    <span>Images</span>
+                </a>
 
-        <?php if (isset($_SESSION['download_status'])): ?>
-            <div class="alert alert-info">⏳ <?php echo htmlspecialchars($_SESSION['download_status']); ?></div>
-        <?php endif; ?>
-        
-        <?php if (isset($success)): ?>
-            <div class="alert alert-success">✅ <?php echo htmlspecialchars($success); ?></div>
-        <?php endif; ?>
-        
-        <?php if (isset($error)): ?>
-            <div class="alert alert-error">
-                ❌ <?php echo htmlspecialchars($error); ?>
-                <br><small><a href="?showlog" target="_blank">→ Log anzeigen für Details</a></small>
-            </div>
-        <?php endif; ?>
-        
-        <div class="card">
-            <h2>Image herunterladen</h2>
-            <form method="POST">
-                <div class="form-group">
-                    <label for="image_name">Image Name:</label>
-                    <input type="text" id="image_name" name="image_name" 
-                           placeholder="z.B. nginx, postgres, linuxserver/paperless-ngx" 
-                           value="<?php echo isset($_POST['image_name']) ? htmlspecialchars($_POST['image_name']) : ''; ?>"
-                           required>
-                    <div class="input-hint">
-                        Offizielle Images: nginx, mysql, postgres, redis<br>
-                        Community Images: linuxserver/paperless-ngx, portainer/portainer-ce
+                <div class="menu-title">System</div>
+                <a href="?showlog" target="_blank" class="menu-item">
+                    <svg class="menu-item-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                    </svg>
+                    <span>Logs</span>
+                </a>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Topbar -->
+            <header class="topbar">
+                <div class="topbar-start">
+                    <button id="sidebar-toggle" class="theme-toggle">
+                        <span>☰</span>
+                    </button>
+                    <h1 class="page-title">Dashboard</h1>
+                </div>
+                <div class="topbar-end">
+                    <button id="theme-toggle" class="theme-toggle">
+                        <span id="theme-icon">🌙</span>
+                    </button>
+                </div>
+            </header>
+
+            <!-- Page Content -->
+            <main class="page-content">
+                <!-- Dashboard Header -->
+                <div class="dashboard-header">
+                    <h2 class="dashboard-title">Docker Image Downloader</h2>
+                    <p class="dashboard-subtitle">Multi-Architektur-Unterstützung für Synology NAS und andere Plattformen</p>
+                </div>
+
+                <!-- Statistics Cards -->
+                <div class="stats-row">
+                    <div class="stat-card">
+                        <div class="stat-card-header">
+                            <div class="stat-card-info">
+                                <div class="stat-card-title">Gesamt Images</div>
+                                <div class="stat-card-value" id="total-images"><?php echo $totalImages; ?></div>
+                            </div>
+                            <div class="stat-card-icon primary">
+                                <span>📦</span>
+                            </div>
+                        </div>
+                        <div class="stat-card-trend">
+                            Heruntergeladene Docker Images
+                        </div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-card-header">
+                            <div class="stat-card-info">
+                                <div class="stat-card-title">Gesamtgröße</div>
+                                <div class="stat-card-value"><?php echo $totalSizeGB; ?> GB</div>
+                            </div>
+                            <div class="stat-card-icon success">
+                                <span>💾</span>
+                            </div>
+                        </div>
+                        <div class="stat-card-trend">
+                            Speicherplatz verwendet
+                        </div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-card-header">
+                            <div class="stat-card-info">
+                                <div class="stat-card-title">Ø Größe</div>
+                                <div class="stat-card-value"><?php echo $avgSizeMB; ?> MB</div>
+                            </div>
+                            <div class="stat-card-icon info">
+                                <span>📊</span>
+                            </div>
+                        </div>
+                        <div class="stat-card-trend">
+                            Durchschnittliche Image-Größe
+                        </div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-card-header">
+                            <div class="stat-card-info">
+                                <div class="stat-card-title">Status</div>
+                                <div class="stat-card-value">
+                                    <?php echo isset($_SESSION['download_status']) ? '⏳' : '✅'; ?>
+                                </div>
+                            </div>
+                            <div class="stat-card-icon warning">
+                                <span>⚡</span>
+                            </div>
+                        </div>
+                        <div class="stat-card-trend">
+                            <?php echo isset($_SESSION['download_status']) ? 'Download läuft' : 'Bereit'; ?>
+                        </div>
                     </div>
                 </div>
-                
-                <div class="form-group">
-                    <label for="image_tag">Tag:</label>
-                    <input type="text" id="image_tag" name="image_tag" 
-                           placeholder="latest" 
-                           value="<?php echo isset($_POST['image_tag']) ? htmlspecialchars($_POST['image_tag']) : 'latest'; ?>">
-                    <div class="input-hint">
-                        Beispiele: latest, alpine, 1.8.0, stable
+
+                <!-- Progress Card -->
+                <div class="progress-card" id="progress-container">
+                    <div class="progress-header">
+                        <div class="progress-info">
+                            <span class="progress-title">Download Fortschritt</span>
+                            <span id="progress-stage" class="progress-stage init">Vorbereitung</span>
+                        </div>
+                        <span id="progress-percentage" class="progress-percentage">0%</span>
+                    </div>
+                    <div class="progress-wrapper">
+                        <div id="progress-bar" class="progress-bar progress-bar-animated" style="width: 0%"></div>
+                    </div>
+                    <div id="progress-message" class="progress-message">Warte auf Download...</div>
+                </div>
+
+                <!-- Alerts -->
+                <?php if (isset($_SESSION['download_status'])): ?>
+                    <div class="alert alert-info">
+                        <span class="alert-icon">⏳</span>
+                        <div class="alert-content"><?php echo htmlspecialchars($_SESSION['download_status']); ?></div>
+                    </div>
+                <?php endif; ?>
+
+                <?php if (isset($success)): ?>
+                    <div class="alert alert-success">
+                        <span class="alert-icon">✅</span>
+                        <div class="alert-content"><?php echo htmlspecialchars($success); ?></div>
+                    </div>
+                <?php endif; ?>
+
+                <?php if (isset($error)): ?>
+                    <div class="alert alert-danger">
+                        <span class="alert-icon">❌</span>
+                        <div class="alert-content">
+                            <?php echo htmlspecialchars($error); ?>
+                            <br><small><a href="?showlog" target="_blank" style="color: inherit; text-decoration: underline;">→ Log anzeigen für Details</a></small>
+                        </div>
+                    </div>
+                <?php endif; ?>
+
+                <!-- Download Form Card -->
+                <div class="card" id="download-section">
+                    <div class="card-header">
+                        <h3 class="card-title">Neues Image herunterladen</h3>
+                        <div class="card-header-actions">
+                            <a href="?showlog" target="_blank" class="btn btn-sm btn-outline-primary">
+                                <svg style="width: 16px; height: 16px; margin-right: 4px;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                </svg>
+                                Logs
+                            </a>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <form method="POST">
+                            <div class="form-group">
+                                <label class="form-label" for="image_name">Image Name</label>
+                                <input type="text"
+                                       id="image_name"
+                                       name="image_name"
+                                       class="form-control"
+                                       placeholder="z.B. nginx, postgres, linuxserver/paperless-ngx"
+                                       value="<?php echo isset($_POST['image_name']) ? htmlspecialchars($_POST['image_name']) : ''; ?>"
+                                       required>
+                                <div class="form-text">
+                                    Offizielle Images: nginx, mysql, postgres, redis |
+                                    Community: linuxserver/paperless-ngx, portainer/portainer-ce
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label" for="image_tag">Tag / Version</label>
+                                <input type="text"
+                                       id="image_tag"
+                                       name="image_tag"
+                                       class="form-control"
+                                       placeholder="latest"
+                                       value="<?php echo isset($_POST['image_tag']) ? htmlspecialchars($_POST['image_tag']) : 'latest'; ?>">
+                                <div class="form-text">
+                                    Beispiele: latest, alpine, 1.8.0, stable, v2.0
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label" for="architecture">Architektur</label>
+                                <select id="architecture" name="architecture" class="form-select">
+                                    <option value="amd64" <?php echo (!isset($_POST['architecture']) || $_POST['architecture'] === 'amd64') ? 'selected' : ''; ?>>
+                                        amd64 (Intel/AMD x86_64) - Standard für die meisten Synology Modelle
+                                    </option>
+                                    <option value="arm64" <?php echo (isset($_POST['architecture']) && $_POST['architecture'] === 'arm64') ? 'selected' : ''; ?>>
+                                        arm64 (ARM 64-bit)
+                                    </option>
+                                    <option value="arm" <?php echo (isset($_POST['architecture']) && $_POST['architecture'] === 'arm') ? 'selected' : ''; ?>>
+                                        arm (ARM 32-bit)
+                                    </option>
+                                </select>
+                                <div class="form-text">
+                                    Die meisten Synology NAS verwenden amd64. Bei Multi-Arch Images wird automatisch die richtige Version geladen.
+                                </div>
+                            </div>
+
+                            <button type="submit" name="download" class="btn btn-primary btn-icon">
+                                <svg style="width: 18px; height: 18px;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                                </svg>
+                                Image herunterladen
+                            </button>
+                        </form>
                     </div>
                 </div>
-                
-                <div class="form-group">
-                    <label for="architecture">Architektur:</label>
-                    <select id="architecture" name="architecture">
-                        <option value="amd64" <?php echo (!isset($_POST['architecture']) || $_POST['architecture'] === 'amd64') ? 'selected' : ''; ?>>
-                            amd64 (Intel/AMD x86_64) - Standard für die meisten Synology Modelle
-                        </option>
-                        <option value="arm64" <?php echo (isset($_POST['architecture']) && $_POST['architecture'] === 'arm64') ? 'selected' : ''; ?>>
-                            arm64 (ARM 64-bit)
-                        </option>
-                        <option value="arm" <?php echo (isset($_POST['architecture']) && $_POST['architecture'] === 'arm') ? 'selected' : ''; ?>>
-                            arm (ARM 32-bit)
-                        </option>
-                    </select>
-                    <div class="input-hint">
-                        Die meisten Synology NAS verwenden amd64 (Intel/AMD Prozessoren).<br>
-                        Bei Multi-Arch Images wird automatisch die richtige Version geladen.
+
+                <!-- Images Table Card -->
+                <div class="card" id="images-section">
+                    <div class="card-header">
+                        <h3 class="card-title">Heruntergeladene Images (<?php echo $totalImages; ?>)</h3>
+                    </div>
+                    <div class="card-body">
+                        <?php if (empty($downloadedImages)): ?>
+                            <div class="empty-state">
+                                <div class="empty-state-icon">📦</div>
+                                <div class="empty-state-title">Keine Images vorhanden</div>
+                                <div class="empty-state-text">Laden Sie Ihr erstes Docker Image herunter, um zu beginnen.</div>
+                            </div>
+                        <?php else: ?>
+                            <div class="table-responsive">
+                                <table class="table">
+                                    <thead>
+                                        <tr>
+                                            <th>Dateiname</th>
+                                            <th>Größe</th>
+                                            <th>Datum</th>
+                                            <th>Status</th>
+                                            <th>Aktionen</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <?php foreach ($downloadedImages as $image): ?>
+                                            <tr>
+                                                <td>
+                                                    <strong><?php echo htmlspecialchars($image['name']); ?></strong>
+                                                </td>
+                                                <td><?php echo number_format($image['size'] / 1024 / 1024, 2); ?> MB</td>
+                                                <td><?php echo date('d.m.Y H:i', $image['date']); ?></td>
+                                                <td>
+                                                    <span class="badge badge-soft-success">Bereit</span>
+                                                </td>
+                                                <td>
+                                                    <a href="download.php?file=<?php echo urlencode($image['name']); ?>"
+                                                       class="btn btn-sm btn-success">
+                                                        <svg style="width: 14px; height: 14px; display: inline;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                                                        </svg>
+                                                    </a>
+                                                    <a href="?delete=<?php echo urlencode($image['name']); ?>"
+                                                       class="btn btn-sm btn-danger btn-delete"
+                                                       data-filename="<?php echo htmlspecialchars($image['name']); ?>">
+                                                        <svg style="width: 14px; height: 14px; display: inline;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                                        </svg>
+                                                    </a>
+                                                </td>
+                                            </tr>
+                                        <?php endforeach; ?>
+                                    </tbody>
+                                </table>
+                            </div>
+                        <?php endif; ?>
                     </div>
                 </div>
-                
-                <button type="submit" name="download" class="btn">
-                    📥 Image herunterladen
-                </button>
-                <a href="?showlog" target="_blank" class="btn btn-secondary">📋 Log</a>
-            </form>
-        </div>
-        
-        <div class="card">
-            <h2>Heruntergeladene Images (<?php echo count($downloadedImages); ?>)</h2>
-            
-            <?php if (empty($downloadedImages)): ?>
-                <div class="empty-state">
-                    <p class="empty-state-icon">📦</p>
-                    <p>Noch keine Images heruntergeladen.</p>
-                </div>
-            <?php else: ?>
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Dateiname</th>
-                            <th>Größe</th>
-                            <th>Datum</th>
-                            <th>Aktionen</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php foreach ($downloadedImages as $image): ?>
-                            <tr>
-                                <td><strong><?php echo htmlspecialchars($image['name']); ?></strong></td>
-                                <td><?php echo number_format($image['size'] / 1024 / 1024, 2); ?> MB</td>
-                                <td><?php echo date('d.m.Y H:i', $image['date']); ?></td>
-                                <td>
-                                    <a href="download.php?file=<?php echo urlencode($image['name']); ?>" 
-                                       class="btn btn-small btn-download">⬇️ Download</a>
-                                    <a href="?delete=<?php echo urlencode($image['name']); ?>" 
-                                       class="btn btn-small btn-delete"
-                                       data-filename="<?php echo htmlspecialchars($image['name']); ?>">🗑️ Löschen</a>
-                                </td>
-                            </tr>
-                        <?php endforeach; ?>
-                    </tbody>
-                </table>
-            <?php endif; ?>
+            </main>
         </div>
     </div>
     <script src="assets/script.js"></script>
