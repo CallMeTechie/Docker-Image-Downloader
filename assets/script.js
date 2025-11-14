@@ -96,7 +96,8 @@ function initDeleteConfirmation() {
  * Form Validation
  */
 function initFormValidation() {
-    const form = document.querySelector('form[method="POST"]');
+    // Target only the download form, not the login form
+    const form = document.getElementById('download-form');
 
     if (form) {
         form.addEventListener('submit', function(e) {

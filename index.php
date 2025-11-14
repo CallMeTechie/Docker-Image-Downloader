@@ -978,7 +978,7 @@ $avgSizeMB = $totalImages > 0 ? round($totalSize / $totalImages / 1024 / 1024, 2
                         </div>
                     </div>
                     <div class="card-body">
-                        <form method="POST">
+                        <form method="POST" id="download-form">
                             <div class="form-group">
                                 <label class="form-label" for="image_name">Image Name</label>
                                 <input type="text"
