@@ -500,7 +500,15 @@ if (isset($_POST['download'])) {
         
         logMessage("=== Download gestartet: $repository:$imageTag (Architektur: $preferredArch) ===");
         $_SESSION['download_status'] = "Download läuft...";
-        
+        $_SESSION['download_progress'] = [
+            'active' => true,
+            'current' => 0,
+            'total' => 0,
+            'percent' => 0,
+            'message' => 'Vorbereitung...',
+            'stage' => 'init'
+        ];
+
         $client = new DockerRegistryClient();
         
         if ($client->authenticate($repository)) {
@@ -531,37 +539,68 @@ if (isset($_POST['download'])) {
                         $layers = $manifest['layers'] ?? [];
                         $totalLayers = count($layers);
                         logMessage("Starte Download von $totalLayers Layern");
-                        
+
+                        $_SESSION['download_progress'] = [
+                            'active' => true,
+                            'current' => 0,
+                            'total' => $totalLayers,
+                            'percent' => 0,
+                            'message' => "Download von $totalLayers Layern wird gestartet...",
+                            'stage' => 'download'
+                        ];
+
                         $downloadSuccess = true;
                         foreach ($layers as $index => $layer) {
                             $digest = $layer['digest'];
                             // WICHTIG: Index-Präfix um Reihenfolge zu erhalten!
                             $layerFile = $imageDir . '/' . sprintf('%03d', $index) . '_' . str_replace(':', '_', $digest) . '.tar.gz';
-                            
-                            logMessage("Lade Layer " . ($index + 1) . "/$totalLayers");
-                            $_SESSION['download_status'] = "Layer " . ($index + 1) . "/$totalLayers wird heruntergeladen...";
-                            
+
+                            $currentLayer = $index + 1;
+                            $percent = round(($currentLayer / $totalLayers) * 100);
+
+                            logMessage("Lade Layer $currentLayer/$totalLayers");
+                            $_SESSION['download_status'] = "Layer $currentLayer/$totalLayers wird heruntergeladen...";
+                            $_SESSION['download_progress'] = [
+                                'active' => true,
+                                'current' => $currentLayer,
+                                'total' => $totalLayers,
+                                'percent' => $percent,
+                                'message' => "Layer $currentLayer von $totalLayers wird heruntergeladen...",
+                                'stage' => 'download'
+                            ];
+
                             if (!$client->downloadBlob($repository, $digest, $layerFile)) {
                                 $downloadSuccess = false;
                                 $error = "Layer $index konnte nicht heruntergeladen werden.";
                                 break;
                             }
-                            
+
                             $size = filesize($layerFile);
-                            logMessage("✓ Layer " . ($index + 1) . " heruntergeladen: " . round($size / 1024 / 1024, 2) . " MB");
+                            logMessage("✓ Layer $currentLayer heruntergeladen: " . round($size / 1024 / 1024, 2) . " MB");
                         }
                         
                         if ($downloadSuccess) {
                             $_SESSION['download_status'] = "Erstelle TAR-Archiv...";
+                            $_SESSION['download_progress'] = [
+                                'active' => true,
+                                'current' => $totalLayers,
+                                'total' => $totalLayers,
+                                'percent' => 100,
+                                'message' => 'TAR-Archiv wird erstellt...',
+                                'stage' => 'tar'
+                            ];
+
                             $tarFile = DOWNLOAD_DIR . '/' . $safeName . '.tar';
-                            
+
                             if (createDockerTar($imageDir, $tarFile, $imageName, $imageTag, $manifest, $configData)) {
                                 $size = filesize($tarFile);
                                 logMessage("=== Download erfolgreich: " . round($size / 1024 / 1024, 2) . " MB ===");
                                 $success = "Image erfolgreich heruntergeladen: $safeName.tar (" . round($size / 1024 / 1024, 2) . " MB)";
                                 unset($_SESSION['download_status']);
+                                unset($_SESSION['download_progress']);
                             } else {
                                 $error = "Fehler beim Erstellen des TAR-Archivs.";
+                                unset($_SESSION['download_progress']);
                             }
                         }
                     } else {
@@ -576,8 +615,9 @@ if (isset($_POST['download'])) {
         } else {
             $error = "Authentifizierung fehlgeschlagen.";
         }
-        
+
         unset($_SESSION['download_status']);
+        unset($_SESSION['download_progress']);
     }
 }
 
@@ -646,7 +686,22 @@ $downloadedImages = getDownloadedImages();
                 <a href="?showlog" target="_blank" class="btn btn-secondary">📋 Log anzeigen</a>
             </div>
         </div>
-        
+
+        <!-- Progress Bar -->
+        <div id="progress-container" class="progress-container">
+            <div class="progress-header">
+                <div>
+                    <span class="progress-title">Download Fortschritt</span>
+                    <span id="progress-stage" class="progress-stage init">Vorbereitung</span>
+                </div>
+                <span id="progress-percentage" class="progress-percentage">0%</span>
+            </div>
+            <div class="progress-bar-wrapper">
+                <div id="progress-bar" class="progress-bar progress-bar-animated" style="width: 0%"></div>
+            </div>
+            <div id="progress-message" class="progress-message">Warte auf Download...</div>
+        </div>
+
         <?php if (isset($_SESSION['download_status'])): ?>
             <div class="alert alert-info">⏳ <?php echo htmlspecialchars($_SESSION['download_status']); ?></div>
         <?php endif; ?>
