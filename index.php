@@ -508,6 +508,7 @@ if (isset($_POST['download'])) {
             'message' => 'Vorbereitung...',
             'stage' => 'init'
         ];
+        session_write_close(); // Session freigeben damit progress.php zugreifen kann
 
         $client = new DockerRegistryClient();
         
@@ -540,6 +541,7 @@ if (isset($_POST['download'])) {
                         $totalLayers = count($layers);
                         logMessage("Starte Download von $totalLayers Layern");
 
+                        session_start(); // Session wieder öffnen
                         $_SESSION['download_progress'] = [
                             'active' => true,
                             'current' => 0,
@@ -548,6 +550,7 @@ if (isset($_POST['download'])) {
                             'message' => "Download von $totalLayers Layern wird gestartet...",
                             'stage' => 'download'
                         ];
+                        session_write_close(); // Session freigeben
 
                         $downloadSuccess = true;
                         foreach ($layers as $index => $layer) {
@@ -559,6 +562,7 @@ if (isset($_POST['download'])) {
                             $percent = round(($currentLayer / $totalLayers) * 100);
 
                             logMessage("Lade Layer $currentLayer/$totalLayers");
+                            session_start(); // Session wieder öffnen
                             $_SESSION['download_status'] = "Layer $currentLayer/$totalLayers wird heruntergeladen...";
                             $_SESSION['download_progress'] = [
                                 'active' => true,
@@ -568,6 +572,7 @@ if (isset($_POST['download'])) {
                                 'message' => "Layer $currentLayer von $totalLayers wird heruntergeladen...",
                                 'stage' => 'download'
                             ];
+                            session_write_close(); // Session freigeben damit progress.php zugreifen kann
 
                             if (!$client->downloadBlob($repository, $digest, $layerFile)) {
                                 $downloadSuccess = false;
@@ -580,6 +585,7 @@ if (isset($_POST['download'])) {
                         }
                         
                         if ($downloadSuccess) {
+                            session_start(); // Session wieder öffnen
                             $_SESSION['download_status'] = "Erstelle TAR-Archiv...";
                             $_SESSION['download_progress'] = [
                                 'active' => true,
@@ -589,6 +595,7 @@ if (isset($_POST['download'])) {
                                 'message' => 'TAR-Archiv wird erstellt...',
                                 'stage' => 'tar'
                             ];
+                            session_write_close(); // Session freigeben
 
                             $tarFile = DOWNLOAD_DIR . '/' . $safeName . '.tar';
 
@@ -596,11 +603,15 @@ if (isset($_POST['download'])) {
                                 $size = filesize($tarFile);
                                 logMessage("=== Download erfolgreich: " . round($size / 1024 / 1024, 2) . " MB ===");
                                 $success = "Image erfolgreich heruntergeladen: $safeName.tar (" . round($size / 1024 / 1024, 2) . " MB)";
+                                session_start(); // Session öffnen um zu löschen
                                 unset($_SESSION['download_status']);
                                 unset($_SESSION['download_progress']);
+                                session_write_close();
                             } else {
                                 $error = "Fehler beim Erstellen des TAR-Archivs.";
+                                session_start(); // Session öffnen um zu löschen
                                 unset($_SESSION['download_progress']);
+                                session_write_close();
                             }
                         }
                     } else {
@@ -616,8 +627,10 @@ if (isset($_POST['download'])) {
             $error = "Authentifizierung fehlgeschlagen.";
         }
 
+        session_start(); // Session öffnen um zu löschen
         unset($_SESSION['download_status']);
         unset($_SESSION['download_progress']);
+        session_write_close();
     }
 }
 
