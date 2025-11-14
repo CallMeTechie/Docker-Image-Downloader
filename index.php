@@ -14,7 +14,8 @@ if (isset($_POST['login'])) {
 
     if (checkCredentials($username, $password)) {
         loginUser($username);
-        header('Location: index.php');
+        // Redirect mit GET um POST-Daten zu löschen
+        header('Location: index.php?login=success');
         exit;
     } else {
         $loginError = 'Ungültiger Benutzername oder Passwort';
@@ -26,6 +27,11 @@ if (isset($_GET['logout'])) {
     logoutUser();
     header('Location: index.php');
     exit;
+}
+
+// Zeige Success-Nachricht nach Login
+if (isset($_GET['login']) && $_GET['login'] === 'success' && isLoggedIn()) {
+    $success = 'Erfolgreich angemeldet als ' . getCurrentUser();
 }
 
 // Konfiguration
