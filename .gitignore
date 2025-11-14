@@ -1,0 +1,27 @@
+# Docker Image Downloader - Git Ignore
+
+# Configuration with credentials (use config.example.php as template)
+config.php
+
+# Downloads directory
+downloads/
+*.tar
+*.tar.gz
+
+# Log files
+*.log
+download.log
+
+# PHP
+*.php~
+*.swp
+
+# IDE
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# OS
+.DS_Store
+Thumbs.db

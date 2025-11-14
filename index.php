@@ -4,6 +4,30 @@ session_start();
 set_time_limit(600);
 ini_set('max_execution_time', 600);
 
+// Load authentication config
+require_once __DIR__ . '/config.php';
+
+// Handle Login
+if (isset($_POST['login'])) {
+    $username = trim($_POST['username'] ?? '');
+    $password = $_POST['password'] ?? '';
+
+    if (checkCredentials($username, $password)) {
+        loginUser($username);
+        header('Location: index.php');
+        exit;
+    } else {
+        $loginError = 'Ungültiger Benutzername oder Passwort';
+    }
+}
+
+// Handle Logout
+if (isset($_GET['logout'])) {
+    logoutUser();
+    header('Location: index.php');
+    exit;
+}
+
 // Konfiguration
 define('DOWNLOAD_DIR', __DIR__ . '/downloads');
 define('LOG_FILE', __DIR__ . '/download.log');
@@ -483,8 +507,8 @@ class DockerRegistryClient {
     }
 }
 
-// Image herunterladen
-if (isset($_POST['download'])) {
+// Image herunterladen (nur für eingeloggte Benutzer)
+if (isset($_POST['download']) && isLoggedIn()) {
     $imageName = trim($_POST['image_name']);
     $imageTag = trim($_POST['image_tag']) ?: 'latest';
     $preferredArch = $_POST['architecture'] ?? 'amd64';
@@ -634,8 +658,8 @@ if (isset($_POST['download'])) {
     }
 }
 
-// Image löschen
-if (isset($_GET['delete'])) {
+// Image löschen (nur für eingeloggte Benutzer)
+if (isset($_GET['delete']) && isLoggedIn()) {
     $fileName = basename($_GET['delete']);
     $filePath = DOWNLOAD_DIR . '/' . $fileName;
     
@@ -700,7 +724,60 @@ $avgSizeMB = $totalImages > 0 ? round($totalSize / $totalImages / 1024 / 1024, 2
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
-    <div class="layout-wrapper">
+    <!-- Login Modal (shown when not authenticated) -->
+    <?php if (!isLoggedIn()): ?>
+    <div class="auth-overlay" id="auth-overlay">
+        <div class="login-modal">
+            <div class="login-modal-header">
+                <span class="login-modal-icon">🔐</span>
+                <h2 class="login-modal-title">Anmeldung erforderlich</h2>
+                <p class="login-modal-subtitle">Bitte melden Sie sich an, um fortzufahren</p>
+            </div>
+            <div class="login-modal-body">
+                <?php if (isset($loginError)): ?>
+                <div class="login-error">
+                    <span class="login-error-icon">⚠️</span>
+                    <span><?php echo htmlspecialchars($loginError); ?></span>
+                </div>
+                <?php endif; ?>
+
+                <form method="POST" action="index.php">
+                    <div class="login-form-group">
+                        <label class="login-form-label" for="username">Benutzername</label>
+                        <input type="text"
+                               id="username"
+                               name="username"
+                               class="login-form-control"
+                               placeholder="Benutzername eingeben"
+                               autocomplete="username"
+                               required
+                               autofocus>
+                    </div>
+
+                    <div class="login-form-group">
+                        <label class="login-form-label" for="password">Passwort</label>
+                        <input type="password"
+                               id="password"
+                               name="password"
+                               class="login-form-control"
+                               placeholder="Passwort eingeben"
+                               autocomplete="current-password"
+                               required>
+                    </div>
+
+                    <button type="submit" name="login" class="login-btn">
+                        <svg style="width: 18px; height: 18px; display: inline; margin-right: 8px; vertical-align: middle;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"></path>
+                        </svg>
+                        Anmelden
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+    <?php endif; ?>
+
+    <div class="layout-wrapper<?php echo !isLoggedIn() ? ' content-blurred' : ''; ?>"<?php echo !isLoggedIn() ? ' aria-hidden="true"' : ''; ?>>
         <!-- Sidebar -->
         <aside class="sidebar">
             <div class="sidebar-brand">
@@ -750,6 +827,18 @@ $avgSizeMB = $totalImages > 0 ? round($totalSize / $totalImages / 1024 / 1024, 2
                     <h1 class="page-title">Dashboard</h1>
                 </div>
                 <div class="topbar-end">
+                    <?php if (isLoggedIn()): ?>
+                        <div class="user-info">
+                            <div class="user-avatar"><?php echo strtoupper(substr(getCurrentUser(), 0, 1)); ?></div>
+                            <span class="user-name"><?php echo htmlspecialchars(getCurrentUser()); ?></span>
+                        </div>
+                        <a href="?logout" class="btn btn-sm btn-logout">
+                            <svg style="width: 14px; height: 14px; display: inline; margin-right: 4px;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
+                            </svg>
+                            Logout
+                        </a>
+                    <?php endif; ?>
                     <button id="theme-toggle" class="theme-toggle">
                         <span id="theme-icon">🌙</span>
                     </button>
