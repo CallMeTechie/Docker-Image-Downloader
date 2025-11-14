@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fortschrittsbalken Test</title>
+    <link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Fortschrittsbalken Test</h1>
+            <p class="subtitle">Klicken Sie auf die Buttons, um verschiedene Fortschrittsstufen zu simulieren</p>
+        </div>
+
+        <!-- Progress Bar - IMMER SICHTBAR für Test -->
+        <div id="progress-container" class="progress-container active">
+            <div class="progress-header">
+                <div>
+                    <span class="progress-title">Download Fortschritt</span>
+                    <span id="progress-stage" class="progress-stage init">Vorbereitung</span>
+                </div>
+                <span id="progress-percentage" class="progress-percentage">0%</span>
+            </div>
+            <div class="progress-bar-wrapper">
+                <div id="progress-bar" class="progress-bar progress-bar-animated" style="width: 0%"></div>
+            </div>
+            <div id="progress-message" class="progress-message">Warte auf Download...</div>
+        </div>
+
+        <div class="card">
+            <h2>Test-Steuerung</h2>
+            <button onclick="simulateInit()" class="btn">Vorbereitung (0%)</button>
+            <button onclick="simulateDownload(30)" class="btn">Download Layer 3/10 (30%)</button>
+            <button onclick="simulateDownload(70)" class="btn">Download Layer 7/10 (70%)</button>
+            <button onclick="simulateTar()" class="btn">TAR-Archiv erstellen (100%)</button>
+            <button onclick="hideProgressBar()" class="btn btn-secondary">Verstecken</button>
+        </div>
+    </div>
+
+    <script>
+        function simulateInit() {
+            updateProgress({
+                active: true,
+                current: 0,
+                total: 10,
+                percent: 0,
+                message: 'Vorbereitung läuft...',
+                stage: 'init'
+            });
+        }
+
+        function simulateDownload(percent) {
+            const current = Math.round(percent / 10);
+            updateProgress({
+                active: true,
+                current: current,
+                total: 10,
+                percent: percent,
+                message: `Layer ${current} von 10 wird heruntergeladen...`,
+                stage: 'download'
+            });
+        }
+
+        function simulateTar() {
+            updateProgress({
+                active: true,
+                current: 10,
+                total: 10,
+                percent: 100,
+                message: 'TAR-Archiv wird erstellt...',
+                stage: 'tar'
+            });
+        }
+
+        function hideProgressBar() {
+            document.getElementById('progress-container').classList.remove('active');
+        }
+
+        function updateProgress(data) {
+            const container = document.getElementById('progress-container');
+            const bar = document.getElementById('progress-bar');
+            const percentage = document.getElementById('progress-percentage');
+            const message = document.getElementById('progress-message');
+            const stage = document.getElementById('progress-stage');
+
+            container.classList.add('active');
+            bar.style.width = data.percent + '%';
+            percentage.textContent = data.percent + '%';
+            message.textContent = data.message;
+            stage.className = 'progress-stage ' + data.stage;
+
+            const stageTexts = {
+                'init': 'Vorbereitung',
+                'download': 'Download',
+                'tar': 'Archivierung'
+            };
+            stage.textContent = stageTexts[data.stage] || data.stage;
+        }
+    </script>
+</body>
+</html>
